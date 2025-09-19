@@ -23,8 +23,7 @@ export default function TeenDashboard() {
       description,
       createdBy: user.id,
       createdByName: user.name,
-  // don't auto-assign a mentor — mentors must accept/assign from mentor dashboard
-  assignedMentor: null,
+      assignedMentor: null,
       createdAt: new Date().toISOString(),
     }
     const next = [newIssue, ...issues]
@@ -37,53 +36,60 @@ export default function TeenDashboard() {
   const myIssues = issues.filter((i) => i.createdBy === user.id)
 
   return (
-    <div className="dashboard">
-      <div className="dashboard-left">
-        <section className="card">
-          <h3>Post an issue</h3>
-          <form onSubmit={postIssue} className="issue-form">
-            <div className="form-grid">
-              <div className="form-group">
-                <label htmlFor="issue-title">Title</label>
-                <input id="issue-title" value={title} onChange={(e) => setTitle(e.target.value)} required />
-              </div>
-              <div className="form-group">
-                <label htmlFor="issue-description">Description</label>
-                <textarea id="issue-description" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} required />
-              </div>
-            </div>
-            <div className="form-actions">
-              <button className="btn btn-primary" type="submit">Post</button>
-            </div>
-          </form>
-        </section>
-
-        <section className="card">
-          <h3>My Issues</h3>
-          {myIssues.length === 0 ? (
-            <div className="muted">You have not posted any issues yet.</div>
-          ) : (
-            <ul className="issue-list">
-              {myIssues.map((it) => (
-                <li key={it.id} className="issue-item">
-                  <div>
-                    <strong>{it.title}</strong>
-                    <div className="muted">{it.assignedMentor ? `Mentor: ${it.assignedMentor.name}` : 'Unassigned'}</div>
+    <div className="container py-4">
+      <div className="row">
+        <div className="col-lg-8 col-12 mb-3">
+          <div className="card mb-4">
+            <div className="card-body">
+              <h3 className="card-title mb-3">Post an issue</h3>
+              <form onSubmit={postIssue}>
+                <div className="row g-3 mb-3">
+                  <div className="col-md-6">
+                    <label htmlFor="issue-title" className="form-label">Title</label>
+                    <input id="issue-title" value={title} onChange={(e) => setTitle(e.target.value)} required className="form-control" />
                   </div>
-                  <Link to={`/chat/${it.id}`} className="btn btn-ghost-light">Open Chat</Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
+                  <div className="col-md-6">
+                    <label htmlFor="issue-description" className="form-label">Description</label>
+                    <textarea id="issue-description" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} required className="form-control" />
+                  </div>
+                </div>
+                <div className="d-flex justify-content-end">
+                  <button className="btn btn-primary" type="submit">Post</button>
+                </div>
+              </form>
+            </div>
+          </div>
 
-      <aside className="dashboard-right">
-        <section className="card">
-          <h3>Quick Tips</h3>
-          <p className="muted">Use the private chat with your mentor to discuss issues safely.</p>
-        </section>
-      </aside>
+          <div className="card">
+            <div className="card-body">
+              <h3 className="card-title mb-3">My Issues</h3>
+              {myIssues.length === 0 ? (
+                <div className="text-muted">You have not posted any issues yet.</div>
+              ) : (
+                <ul className="list-group list-group-flush">
+                  {myIssues.map((it) => (
+                    <li key={it.id} className="list-group-item d-flex justify-content-between align-items-center">
+                      <div>
+                        <strong>{it.title}</strong>
+                        <div className="text-muted small">{it.assignedMentor ? `Mentor: ${it.assignedMentor.name}` : 'Unassigned'}</div>
+                      </div>
+                      <Link to={`/chat/${it.id}`} className="btn btn-outline-primary">Open Chat</Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="col-lg-4 col-12">
+          <div className="card">
+            <div className="card-body">
+              <h3 className="card-title">Quick Tips</h3>
+              <p className="text-muted">Use the private chat with your mentor to discuss issues safely. This is a mock app — data is stored locally.</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

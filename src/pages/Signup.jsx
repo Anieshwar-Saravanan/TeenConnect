@@ -28,36 +28,36 @@ export default function Signup() {
   }
 
   return (
-    <div className="auth-card">
-      <h2>Create an account</h2>
-      <form onSubmit={handleSubmit} className="auth-form">
-        <label>
-          Role
-          <select value={role} onChange={(e) => setRole(e.target.value)}>
-            <option value="teen">Teen</option>
-            <option value="mentor">Mentor / Adult / Parent</option>
-          </select>
-        </label>
-
-        <label>
-          Name
-          <input value={name} onChange={(e) => setName(e.target.value)} required />
-        </label>
-
-        <label>
-          Email
-          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
-        </label>
-
-        <label>
-          Password
-          <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required />
-        </label>
-
-        <div className="form-actions">
-          <button className="btn btn-primary" type="submit">Sign up</button>
+    <div className="container d-flex align-items-center justify-content-center min-vh-100">
+      <div className="card shadow" style={{ minWidth: 350, maxWidth: 420 }}>
+        <div className="card-body">
+          <h2 className="card-title text-center mb-4">Create an account</h2>
+          <form onSubmit={handleSubmit}>
+            <div className="mb-3">
+              <label className="form-label">Role</label>
+              <select value={role} onChange={(e) => setRole(e.target.value)} className="form-select">
+                <option value="teen">Teen</option>
+                <option value="mentor">Mentor / Adult / Parent</option>
+              </select>
+            </div>
+            <div className="mb-3">
+              <label className="form-label">Name</label>
+              <input value={name} onChange={(e) => setName(e.target.value)} required className="form-control" />
+            </div>
+            <div className="mb-3">
+              <label className="form-label">Email</label>
+              <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required className="form-control" />
+            </div>
+            <div className="mb-3">
+              <label className="form-label">Password</label>
+              <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required className="form-control" />
+            </div>
+            <div className="d-flex justify-content-end">
+              <button className="btn btn-primary" type="submit">Sign up</button>
+            </div>
+          </form>
         </div>
-      </form>
+      </div>
     </div>
   )
 }

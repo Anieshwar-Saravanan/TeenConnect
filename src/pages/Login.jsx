@@ -69,54 +69,55 @@ export default function Login() {
   }
 
   return (
-    <div className="auth-card">
-      <h2>Login to Teen Connect</h2>
-
-      <form onSubmit={mode === 'password' ? handleLogin : verifyOtp} className="auth-form">
-        <label className="form-group">
-          Role
-          <select value={role} onChange={(e) => setRole(e.target.value)}>
-            <option value="teen">Teen</option>
-            <option value="mentor">Mentor / Adult / Parent</option>
-          </select>
-        </label>
-
-        <label className="form-group">
-          Email
-          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
-        </label>
-
-        {mode === 'password' ? (
-          <>
-            <label className="form-group">
-              Password
-              <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required />
-            </label>
-            <div className="form-actions">
-              <div>
-                <button className="btn btn-primary" type="submit">Login</button>
-                <button type="button" className="btn btn-otp" style={{ marginLeft: 8 }} onClick={() => setMode('otp')}>Login with OTP</button>
-              </div>
-              <Link to="/signup" className="btn btn-ghost">Create account</Link>
+    <div className="container d-flex align-items-center justify-content-center min-vh-100">
+      <div className="card shadow" style={{ minWidth: 350, maxWidth: 420 }}>
+        <div className="card-body">
+          <h2 className="card-title text-center mb-4">Login</h2>
+          <form onSubmit={mode === 'password' ? handleLogin : verifyOtp}>
+            <div className="mb-3">
+              <label className="form-label">Role</label>
+              <select value={role} onChange={(e) => setRole(e.target.value)} className="form-select">
+                <option value="teen">Teen</option>
+                <option value="mentor">Mentor / Adult / Parent</option>
+              </select>
             </div>
-          </>
-        ) : (
-          <>
-            {otpSent && <div className="otp-banner">OTP sent to {email}</div>}
-            <label className="form-group">
-              Enter OTP
-              <input value={otpValue} onChange={(e) => setOtpValue(e.target.value)} required />
-            </label>
-            <div className="form-actions">
-              <div>
-                <button className="btn btn-primary" type="submit">Verify & Login</button>
-                <button type="button" className="btn btn-ghost" style={{ marginLeft: 8 }} onClick={sendOtp}>{otpSent ? 'Resend OTP' : 'Send OTP'}</button>
-              </div>
-              <button type="button" className="btn btn-ghost" onClick={() => { setMode('password'); setOtpSent(false); setOtpValue('') }}>Use password</button>
+            <div className="mb-3">
+              <label className="form-label">Email</label>
+              <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required className="form-control" />
             </div>
-          </>
-        )}
-      </form>
+            {mode === 'password' ? (
+              <>
+                <div className="mb-3">
+                  <label className="form-label">Password</label>
+                  <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required className="form-control" />
+                </div>
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <button className="btn btn-primary" type="submit">Login</button>
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => setMode('otp')}>Login with OTP</button>
+                </div>
+                <div className="text-center">
+                  <Link to="/signup" className="btn btn-link">Create account</Link>
+                </div>
+              </>
+            ) : (
+              <>
+                {otpSent && <div className="alert alert-warning py-2">OTP sent to {email}</div>}
+                <div className="mb-3">
+                  <label className="form-label">Enter OTP</label>
+                  <input value={otpValue} onChange={(e) => setOtpValue(e.target.value)} required className="form-control" />
+                </div>
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <button className="btn btn-primary" type="submit">Verify & Login</button>
+                  <button type="button" className="btn btn-outline-secondary" onClick={sendOtp}>{otpSent ? 'Resend OTP' : 'Send OTP'}</button>
+                </div>
+                <div className="text-center">
+                  <button type="button" className="btn btn-link" onClick={() => { setMode('password'); setOtpSent(false); setOtpValue('') }}>Use password</button>
+                </div>
+              </>
+            )}
+          </form>
+        </div>
+      </div>
     </div>
   )
 }

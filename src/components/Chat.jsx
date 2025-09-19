@@ -1,9 +1,8 @@
-import React, { useEffect, useMemo, useState, useContext, useRef } from 'react'
+import React, { useEffect, useState, useContext, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import ModerationPanel from './ModerationPanel'
 import { AuthContext } from '../App'
 
-// Simple chat bubbles and input using GlueStack-style components (mocked)
 export default function Chat() {
   const { issueId } = useParams()
   const navigate = useNavigate()
@@ -116,60 +115,65 @@ export default function Chat() {
     return senderRole === 'teen' ? 'Teen' : senderRole === 'mentor' ? 'Mentor' : 'User'
   }
 
-  if (!issue) return <div style={{ padding: 20 }}>Issue not found</div>
+  if (!issue) return <div className="p-4">Issue not found</div>
 
   return (
-    <div className="chat-page">
-      <div className="chat-area">
-        <div className="chat-header">
-          <button className="btn btn-link" onClick={() => navigate(-1)}>← Back</button>
-          <div>
-            <h3>{issue.title}</h3>
-            <div className="muted">With: {issue.assignedMentor?.name || 'Unassigned'}</div>
-            {issue.assignedMentor?.email && (
-              <div className="muted">Mentor email: {issue.assignedMentor.email}</div>
-            )}
-          </div>
-        </div>
-
-        {!issue.assignedMentor && (
-          <div className="card" style={{ margin: '8px 0', borderLeft: '4px solid var(--brand)' }}>
-            <strong>Notice</strong>
-            <div className="muted" style={{ marginTop: 6 }}>
-              This issue is currently unassigned. Messaging is disabled until a mentor is assigned.
+    <div className="container py-4">
+      <div className="row">
+        <div className="col-lg-8 col-12 mb-3">
+          <div className="d-flex align-items-center mb-3">
+            <button className="btn btn-link p-0 me-3" onClick={() => navigate(-1)}>← Back</button>
+            <div>
+              <h3 className="mb-0">{issue.title}</h3>
+              <div className="text-muted small">With: {issue.assignedMentor?.name || 'Unassigned'}</div>
+              {issue.assignedMentor?.email && (
+                <div className="text-muted small">Mentor email: {issue.assignedMentor.email}</div>
+              )}
             </div>
-            {user && user.role === 'mentor' && (
-              <div style={{ marginTop: 10 }}>
-                <button className="btn btn-primary" onClick={assignToSelf}>Assign to me</button>
+          </div>
+
+          {!issue.assignedMentor && (
+            <div className="alert alert-warning d-flex flex-column p-3 mb-3">
+              <strong>Notice</strong>
+              <div className="small mt-1">
+                This issue is currently unassigned. Messaging is disabled until a mentor is assigned.
               </div>
-            )}
-          </div>
-        )}
-
-        <div className="messages" id="messages" ref={messagesRef}>
-          {messages.map((m) => (
-            <div
-              key={m.id}
-              className={`message-bubble ${m.senderRole === 'teen' ? 'msg-teen' : 'msg-mentor'}`}>
-              <div className="message-meta">{resolveSenderName(m.senderId, m.senderRole)} · {new Date(m.createdAt).toLocaleTimeString()}</div>
-              <div className="message-text">{m.text}</div>
+              {user && user.role === 'mentor' && (
+                <button className="btn btn-primary mt-2 align-self-start" onClick={assignToSelf}>Assign to me</button>
+              )}
             </div>
-          ))}
-        </div>
+          )}
 
-        <div className="chat-input">
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder={issue.assignedMentor ? 'Type a message...' : 'Cannot send messages until assigned'}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            disabled={!issue.assignedMentor}
-          />
-          <button className="btn btn-primary" onClick={handleSend} disabled={!issue.assignedMentor}>Send</button>
+          <div className="border rounded p-3 mb-3 bg-light" style={{ height: 350, overflowY: 'auto' }} ref={messagesRef}>
+            {messages.map((m) => (
+              <div
+                key={m.id}
+                className={`mb-2 d-flex flex-column ${m.senderRole === 'teen' ? 'align-items-end' : 'align-items-start'}`}
+              >
+                <div className={`px-3 py-2 rounded-3 ${m.senderRole === 'teen' ? 'bg-primary text-white' : 'bg-success text-white'}`} style={{ maxWidth: '70%' }}>
+                  <div className="small fw-bold mb-1">{resolveSenderName(m.senderId, m.senderRole)} <span className="text-white-50">· {new Date(m.createdAt).toLocaleTimeString()}</span></div>
+                  <div>{m.text}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="input-group">
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder={issue.assignedMentor ? 'Type a message...' : 'Cannot send messages until assigned'}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              disabled={!issue.assignedMentor}
+              className="form-control"
+            />
+            <button className="btn btn-primary" onClick={handleSend} disabled={!issue.assignedMentor}>Send</button>
+          </div>
+        </div>
+        <div className="col-lg-4 col-12">
+          <ModerationPanel messages={messages} />
         </div>
       </div>
-
-      <ModerationPanel messages={messages} />
     </div>
   )
 }
