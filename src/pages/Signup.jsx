@@ -10,21 +10,21 @@ export default function Signup() {
   const [password, setPassword] = useState('')
   const navigate = useNavigate()
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
-    const users = JSON.parse(localStorage.getItem('tc_users') || '[]')
-    const id = 'u_' + Date.now()
-    const newUser = { id, name, email, password, role }
-    users.push(newUser)
-    localStorage.setItem('tc_users', JSON.stringify(users))
-    // if mentor, ensure a mentors list
-    if (role === 'mentor') {
-      const mentors = JSON.parse(localStorage.getItem('tc_mentors') || '[]')
-      mentors.push({ id, name, email })
-      localStorage.setItem('tc_mentors', JSON.stringify(mentors))
+    try {
+      const res = await fetch('http://localhost:5001/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, role })
+      })
+      if (!res.ok) throw new Error('Signup failed')
+      const user = await res.json()
+      setUser(user)
+      navigate(role === 'teen' ? '/teen' : '/mentor')
+    } catch (err) {
+      alert('Signup failed. Try again.')
     }
-    setUser(newUser)
-    navigate(role === 'teen' ? '/teen' : '/mentor')
   }
 
   return (

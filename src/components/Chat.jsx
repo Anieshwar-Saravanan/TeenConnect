@@ -14,45 +14,25 @@ export default function Chat() {
   const messagesRef = useRef(null)
 
   useEffect(() => {
-    const issues = JSON.parse(localStorage.getItem('tc_issues') || '[]')
-    let found = issues.find((i) => i.id === issueId)
-    if (!found) return
-
-    // enrich assignedMentor by looking up users / mentors stored elsewhere
-    const users = JSON.parse(localStorage.getItem('tc_users') || '[]')
-    const mentorsList = JSON.parse(localStorage.getItem('tc_mentors') || '[]')
-
-    if (found.assignedMentor && found.assignedMentor.id) {
-      const mentorFromUsers = users.find((u) => u.id === found.assignedMentor.id && u.role === 'mentor')
-      const mentorFromList = mentorsList.find((m) => m.id === found.assignedMentor.id)
-      const fullMentor = mentorFromUsers
-        ? { id: mentorFromUsers.id, name: mentorFromUsers.name, email: mentorFromUsers.email }
-        : mentorFromList
-        ? mentorFromList
-        : null
-
-      if (fullMentor) {
-        // if stored mentor details are incomplete, persist the richer object
-        if (!found.assignedMentor.email || found.assignedMentor.name !== fullMentor.name) {
-          const updated = issues.map((it) => (it.id === issueId ? { ...it, assignedMentor: fullMentor } : it))
-          localStorage.setItem('tc_issues', JSON.stringify(updated))
-          found = updated.find((i) => i.id === issueId)
-        }
+    async function fetchData() {
+      try {
+        const res = await fetch(`http://localhost:5001/api/issues/${issueId}`)
+        if (!res.ok) return
+        const found = await res.json()
+        setIssue(found)
+        const msgRes = await fetch(`http://localhost:5001/api/issues/${issueId}/messages`)
+        if (!msgRes.ok) { setMessages([]); return }
+        const msgs = await msgRes.json()
+        setMessages(msgs)
+      } catch {
+        setIssue(null)
+        setMessages([])
       }
     }
-
-    setIssue(found)
-
-    // load or initialize messages
-    const allMessages = JSON.parse(localStorage.getItem('tc_messages') || '{}')
-    setMessages(allMessages[issueId] || [])
+    fetchData()
   }, [issueId])
 
   useEffect(() => {
-    // save messages to localStorage whenever they change
-    const allMessages = JSON.parse(localStorage.getItem('tc_messages') || '{}')
-    allMessages[issueId] = messages
-    localStorage.setItem('tc_messages', JSON.stringify(allMessages))
     // scroll to bottom after messages update
     requestAnimationFrame(() => {
       if (messagesRef.current) {
@@ -61,57 +41,49 @@ export default function Chat() {
     })
   }, [messages, issueId])
 
-  const assignToSelf = () => {
+  const assignToSelf = async () => {
     if (!user) return
-
-    // Ensure mentors list contains this mentor
-    const users = JSON.parse(localStorage.getItem('tc_users') || '[]')
-    const mentorsList = JSON.parse(localStorage.getItem('tc_mentors') || '[]')
-    const mentorUser = users.find((u) => u.id === user.id && u.role === 'mentor')
-
-    const mentorRecord = mentorUser
-      ? { id: mentorUser.id, name: mentorUser.name, email: mentorUser.email }
-      : { id: user.id, name: user.name, email: user.email || '' }
-
-    const already = mentorsList.find((m) => m.id === mentorRecord.id)
-    if (!already) {
-      mentorsList.push(mentorRecord)
-      localStorage.setItem('tc_mentors', JSON.stringify(mentorsList))
+    try {
+      const res = await fetch(`http://localhost:5001/api/issues/${issueId}/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mentorId: user.id, mentorName: user.name })
+      })
+      if (!res.ok) throw new Error('Failed to assign')
+      const updated = await res.json()
+      setIssue(updated)
+    } catch {
+      alert('Failed to assign issue')
     }
-
-    // Update issues list with full mentor record
-    const issues = JSON.parse(localStorage.getItem('tc_issues') || '[]')
-    const updated = issues.map((it) => (it.id === issueId ? { ...it, assignedMentor: mentorRecord } : it))
-    localStorage.setItem('tc_issues', JSON.stringify(updated))
-    const found = updated.find((i) => i.id === issueId)
-    setIssue(found)
   }
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!text.trim()) return
-    // Prevent sending if issue is unassigned
     if (!issue?.assignedMentor) {
       alert('This issue is not assigned to a mentor yet. You cannot send messages until a mentor is assigned.')
       return
     }
-
-    const newMsg = {
-      id: Date.now().toString(),
-      senderId: user?.id || 'anonymous',
-      senderRole: user?.role || 'teen',
-      text: text.trim(),
-      createdAt: new Date().toISOString(),
+    try {
+      const res = await fetch(`http://localhost:5001/api/issues/${issueId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ senderId: user?.id, senderRole: user?.role, text: text.trim() })
+      })
+      if (!res.ok) throw new Error('Failed to send message')
+      const newMsg = await res.json()
+      setMessages((s) => [...s, newMsg])
+      setText('')
+    } catch {
+      alert('Failed to send message')
     }
-    setMessages((s) => [...s, newMsg])
-    setText('')
   }
 
   // Helper to resolve a sender's name from stored users
   const resolveSenderName = (senderId, senderRole) => {
-    const users = JSON.parse(localStorage.getItem('tc_users') || '[]')
-    const u = users.find((x) => x.id === senderId)
-    if (u) return u.name
-    // fallback to role label
+    // For demo, just return senderRole if not found
+    if (!issue) return senderRole
+    if (issue.createdBy === senderId) return issue.createdByName
+    if (issue.assignedMentor && issue.assignedMentor.id === senderId) return issue.assignedMentor.name
     return senderRole === 'teen' ? 'Teen' : senderRole === 'mentor' ? 'Mentor' : 'User'
   }
 
@@ -138,24 +110,31 @@ export default function Chat() {
               <div className="small mt-1">
                 This issue is currently unassigned. Messaging is disabled until a mentor is assigned.
               </div>
-              {user && user.role === 'mentor' && (
-                <button className="btn btn-primary mt-2 align-self-start" onClick={assignToSelf}>Assign to me</button>
-              )}
             </div>
           )}
 
           <div className="border rounded p-3 mb-3 bg-light" style={{ height: 350, overflowY: 'auto' }} ref={messagesRef}>
-            {messages.map((m) => (
-              <div
-                key={m.id}
-                className={`mb-2 d-flex flex-column ${m.senderRole === 'teen' ? 'align-items-end' : 'align-items-start'}`}
-              >
-                <div className={`px-3 py-2 rounded-3 ${m.senderRole === 'teen' ? 'bg-primary text-white' : 'bg-success text-white'}`} style={{ maxWidth: '70%' }}>
-                  <div className="small fw-bold mb-1">{resolveSenderName(m.senderId, m.senderRole)} <span className="text-white-50">· {new Date(m.createdAt).toLocaleTimeString()}</span></div>
-                  <div>{m.text}</div>
+            {messages.map((m) => {
+              const isCurrentUser = m.senderId === user?.id;
+              const bubbleColor = isCurrentUser ? 'bg-primary text-white' : 'bg-success text-white';
+              const alignClass = isCurrentUser ? 'align-items-end' : 'align-items-start';
+              // Support both created_at and createdAt
+              const ts = m.createdAt || m.created_at;
+              return (
+                <div
+                  key={m.id}
+                  className={`mb-2 d-flex flex-column ${alignClass}`}
+                >
+                  <div className={`px-3 py-2 rounded-3 ${bubbleColor}`} style={{ maxWidth: '70%' }}>
+                    <div className="small fw-bold mb-1">
+                      {resolveSenderName(m.senderId, m.senderRole)}{' '}
+                      <span className="text-white-50">· {ts ? new Date(ts).toLocaleTimeString() : ''}</span>
+                    </div>
+                    <div>{m.text}</div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="input-group">

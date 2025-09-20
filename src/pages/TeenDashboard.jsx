@@ -10,27 +10,32 @@ export default function TeenDashboard() {
   const [mentors, setMentors] = useState([])
 
   useEffect(() => {
-    setIssues(JSON.parse(localStorage.getItem('tc_issues') || '[]'))
-    setMentors(JSON.parse(localStorage.getItem('tc_mentors') || '[]'))
+    fetch('http://localhost:5001/api/issues?role=teen', { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => setIssues(data))
+      .catch(() => setIssues([]))
+    fetch('http://localhost:5001/api/mentors', { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => setMentors(data))
+      .catch(() => setMentors([]))
   }, [])
 
-  function postIssue(e) {
+  async function postIssue(e) {
     e.preventDefault()
-    const id = 'iss_' + Date.now()
-    const newIssue = {
-      id,
-      title,
-      description,
-      createdBy: user.id,
-      createdByName: user.name,
-      assignedMentor: null,
-      createdAt: new Date().toISOString(),
+    try {
+      const res = await fetch('http://localhost:5001/api/issues', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, description, created_by: user.id })
+      })
+      if (!res.ok) throw new Error('Failed to post issue')
+      const newIssue = await res.json()
+      setIssues([newIssue, ...issues])
+      setTitle('')
+      setDescription('')
+    } catch (err) {
+      alert('Failed to post issue')
     }
-    const next = [newIssue, ...issues]
-    setIssues(next)
-    localStorage.setItem('tc_issues', JSON.stringify(next))
-    setTitle('')
-    setDescription('')
   }
 
   const myIssues = issues.filter((i) => i.createdBy === user.id)
@@ -73,7 +78,9 @@ export default function TeenDashboard() {
                         <strong>{it.title}</strong>
                         <div className="text-muted small">{it.assignedMentor ? `Mentor: ${it.assignedMentor.name}` : 'Unassigned'}</div>
                       </div>
-                      <Link to={`/chat/${it.id}`} className="btn btn-outline-primary">Open Chat</Link>
+                      <Link to={`/chat/${it.id}`} className="btn btn-outline-primary">
+                        {it.assignedMentor ? 'Open Chat' : 'View Chat (disabled)'}
+                      </Link>
                     </li>
                   ))}
                 </ul>

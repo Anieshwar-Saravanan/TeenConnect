@@ -1,19 +1,33 @@
 import React, { useContext, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { AuthContext } from '../App'
 
 export default function MentorDashboard() {
   const { user } = useContext(AuthContext)
   const [issues, setIssues] = useState([])
+  const navigate = useNavigate()
 
   useEffect(() => {
-    setIssues(JSON.parse(localStorage.getItem('tc_issues') || '[]'))
+    fetch('http://localhost:5001/api/issues', { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => setIssues(data))
+      .catch(() => setIssues([]))
   }, [])
 
-  function assignToSelf(issueId) {
-    const all = issues.map((it) => (it.id === issueId ? { ...it, assignedMentor: { id: user.id, name: user.name } } : it))
-    setIssues(all)
-    localStorage.setItem('tc_issues', JSON.stringify(all))
+  async function assignToSelf(issueId) {
+    try {
+      const res = await fetch(`http://localhost:5001/api/issues/${issueId}/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mentorId: user.id, mentorName: user.name })
+      })
+      if (!res.ok) throw new Error('Failed to assign')
+      const updated = await res.json()
+      setIssues(issues.map((it) => (it.id === issueId ? updated : it)))
+      navigate(`/chat/${issueId}`)
+    } catch (err) {
+      alert('Failed to assign issue')
+    }
   }
 
   return (
@@ -28,25 +42,24 @@ export default function MentorDashboard() {
                 <div className="text-muted">No issues reported yet.</div>
               ) : (
                 <ul className="list-group list-group-flush">
-                  {issues.map((it) => (
-                    <li key={it.id} className="list-group-item d-flex justify-content-between align-items-center">
-                      <div>
-                        <strong>{it.title}</strong>
-                        <p className="text-muted mb-1 small">{it.description}</p>
-                        <div className="text-muted small">By {it.createdByName} · {new Date(it.createdAt).toLocaleString()}</div>
-                        <div className="text-muted small">Assigned: {it.assignedMentor ? it.assignedMentor.name : 'None'}</div>
-                      </div>
-                      <div>
-                        {!it.assignedMentor ? (
-                          <button className="btn btn-outline-primary" onClick={() => assignToSelf(it.id)}>Assign to me</button>
-                        ) : it.assignedMentor.id === user.id ? (
-                          <Link to={`/chat/${it.id}`} className="btn btn-primary">Open Chat</Link>
-                        ) : (
-                          <span className="text-muted small">Assigned to {it.assignedMentor.name}</span>
-                        )}
-                      </div>
-                    </li>
-                  ))}
+                  {issues
+                    .filter((it) => !it.assignedMentor || it.assignedMentor.id === user.id)
+                    .map((it) => (
+                      <li key={it.id} className="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                          <strong>{it.title}</strong>
+                          <p className="text-muted mb-1 small">{it.description}</p>
+                          <div className="text-muted small">Assigned: {it.assignedMentor ? it.assignedMentor.name : 'None'}</div>
+                        </div>
+                        <div>
+                          {!it.assignedMentor ? (
+                            <button className="btn btn-outline-primary" onClick={() => assignToSelf(it.id)}>Assign to me</button>
+                          ) : it.assignedMentor.id === user.id ? (
+                            <Link to={`/chat/${it.id}`} className="btn btn-primary">Open Chat</Link>
+                          ) : null}
+                        </div>
+                      </li>
+                    ))}
                 </ul>
               )}
             </div>

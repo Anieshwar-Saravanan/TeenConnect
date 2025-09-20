@@ -13,60 +13,57 @@ export default function Login() {
   const [mockOtp, setMockOtp] = useState(null)
   const navigate = useNavigate()
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault()
-    // simple mocked auth: look for registered users in localStorage
-    const users = JSON.parse(localStorage.getItem('tc_users') || '[]')
-    const found = users.find((u) => u.email === email && u.password === password && u.role === role)
-    if (found) {
-      setUser(found)
+    try {
+      const res = await fetch('http://localhost:5001/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, role })
+      })
+      if (!res.ok) throw new Error('Invalid credentials')
+      const user = await res.json()
+      setUser(user)
       navigate(role === 'teen' ? '/teen' : '/mentor')
-    } else {
+    } catch (err) {
       alert('Invalid credentials. You can sign up first.')
     }
   }
 
-  const sendOtp = () => {
+  const sendOtp = async () => {
     if (!email) { alert('Enter your email to receive OTP'); return }
-    // mock OTP generation and store in localStorage for verification
-    const otp = (Math.floor(100000 + Math.random() * 900000)).toString()
-    setMockOtp(otp)
-    setOtpSent(true)
-    // store otp against email in localStorage for demo
-    const otps = JSON.parse(localStorage.getItem('tc_otps') || '{}')
-    otps[email] = { otp, createdAt: Date.now() }
-    localStorage.setItem('tc_otps', JSON.stringify(otps))
-    // show mock otp as an alert for demo
-    alert('Mock OTP (for demo): ' + otp)
-  }
-
-  const verifyOtp = (e) => {
-    e.preventDefault()
-    const otps = JSON.parse(localStorage.getItem('tc_otps') || '{}')
-    const record = otps[email]
-    if (!record) { alert('No OTP sent to this email.'); return }
-    if (record.otp === otpValue) {
-      // find user by email and role
-      const users = JSON.parse(localStorage.getItem('tc_users') || '[]')
-      let found = users.find((u) => u.email === email && u.role === role)
-      if (!found) {
-        // if not found, auto-create a teen/mentor-lite user for demo
-        const id = 'u_' + Date.now()
-        found = { id, name: email.split('@')[0], email, password: '', role }
-        users.push(found)
-        localStorage.setItem('tc_users', JSON.stringify(users))
-        if (role === 'mentor') {
-          const mentors = JSON.parse(localStorage.getItem('tc_mentors') || '[]')
-          mentors.push({ id: found.id, name: found.name, email: found.email })
-          localStorage.setItem('tc_mentors', JSON.stringify(mentors))
-        }
-      }
-      setUser(found)
-      navigate(role === 'teen' ? '/teen' : '/mentor')
-    } else {
-      alert('Invalid OTP')
+    try {
+      const res = await fetch('http://localhost:5001/api/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, role })
+      })
+      const data = await res.json()
+      setMockOtp(data.otp) // For demo, backend can return OTP
+      setOtpSent(true)
+      alert('Mock OTP (for demo): ' + data.otp)
+    } catch (err) {
+      alert('Failed to send OTP')
     }
   }
+
+  const verifyOtp = async (e) => {
+    e.preventDefault()
+    try {
+      const res = await fetch('http://localhost:5001/api/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp: otpValue, role })
+      })
+      if (!res.ok) throw new Error('Invalid OTP')
+      const user = await res.json()
+      setUser(user)
+      navigate(role === 'teen' ? '/teen' : '/mentor')
+    } catch (err) {
+      alert('Invalid OTP or user not found.')
+    }
+  }
+
 
   return (
     <div className="container d-flex align-items-center justify-content-center min-vh-100">
