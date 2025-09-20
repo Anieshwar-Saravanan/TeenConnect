@@ -1,30 +1,40 @@
-import React, { useContext, useState } from 'react'
+import React, { useContext, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { io } from 'socket.io-client'
 import { AuthContext } from '../App'
 
 export default function Signup() {
   const { setUser } = useContext(AuthContext)
+  const [socket, setSocket] = useState(null)
   const [role, setRole] = useState('teen')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const navigate = useNavigate()
 
-  async function handleSubmit(e) {
-    e.preventDefault()
-    try {
-      const res = await fetch('http://localhost:5001/api/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, role })
-      })
-      if (!res.ok) throw new Error('Signup failed')
-      const user = await res.json()
+  useEffect(() => {
+    const newSocket = io('http://localhost:5001')
+    setSocket(newSocket)
+
+    // Handle signup responses
+    newSocket.on('signup_success', (user) => {
       setUser(user)
       navigate(role === 'teen' ? '/teen' : '/mentor')
-    } catch (err) {
-      alert('Signup failed. Try again.')
+    })
+
+    newSocket.on('signup_error', (error) => {
+      alert(error.error || 'Signup failed. Try again.')
+    })
+
+    return () => {
+      newSocket.disconnect()
     }
+  }, [role, navigate, setUser])
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    if (!socket) return
+    socket.emit('signup', { name, email, password, role })
   }
 
   return (

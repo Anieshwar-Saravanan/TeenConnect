@@ -1,41 +1,76 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { io } from 'socket.io-client'
 import { AuthContext } from '../App'
 
 export default function TeenDashboard() {
   const { user } = useContext(AuthContext)
+  const [socket, setSocket] = useState(null)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [issues, setIssues] = useState([])
   const [mentors, setMentors] = useState([])
 
   useEffect(() => {
-    fetch('http://localhost:5001/api/issues?role=teen', { credentials: 'include' })
-      .then(res => res.json())
-      .then(data => setIssues(data))
-      .catch(() => setIssues([]))
-    fetch('http://localhost:5001/api/mentors', { credentials: 'include' })
-      .then(res => res.json())
-      .then(data => setMentors(data))
-      .catch(() => setMentors([]))
-  }, [])
+    const newSocket = io('http://localhost:5001')
+    setSocket(newSocket)
 
-  async function postIssue(e) {
-    e.preventDefault()
-    try {
-      const res = await fetch('http://localhost:5001/api/issues', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description, created_by: user.id })
-      })
-      if (!res.ok) throw new Error('Failed to post issue')
-      const newIssue = await res.json()
-      setIssues([newIssue, ...issues])
+    // Authenticate user
+    if (user) {
+      newSocket.emit('authenticate', { userId: user.id, role: user.role })
+    }
+
+    // Get issues and mentors
+    newSocket.emit('get_issues')
+    newSocket.emit('get_mentors')
+
+    // Handle issues data
+    newSocket.on('issues_data', (data) => {
+      setIssues(data)
+    })
+
+    // Handle mentors data
+    newSocket.on('mentors_data', (data) => {
+      setMentors(data)
+    })
+
+    // Handle new issues
+    newSocket.on('new_issue', (newIssue) => {
+      setIssues(prev => [newIssue, ...prev])
+    })
+
+    // Handle issue updates
+    newSocket.on('issue_updated', (updatedIssue) => {
+      setIssues(prev => prev.map(issue =>
+        issue.id === updatedIssue.id ? updatedIssue : issue
+      ))
+    })
+
+    // Handle create issue responses
+    newSocket.on('create_issue_success', (newIssue) => {
+      setIssues(prev => [newIssue, ...prev])
       setTitle('')
       setDescription('')
-    } catch (err) {
-      alert('Failed to post issue')
+    })
+
+    newSocket.on('create_issue_error', (error) => {
+      alert(error.error || 'Failed to post issue')
+    })
+
+    return () => {
+      newSocket.disconnect()
     }
+  }, [user])
+
+  function postIssue(e) {
+    e.preventDefault()
+    if (!socket) return
+    socket.emit('create_issue', {
+      title,
+      description,
+      created_by: user.id,
+      createdBy: user.id
+    })
   }
 
   const myIssues = issues.filter((i) => i.createdBy === user.id)

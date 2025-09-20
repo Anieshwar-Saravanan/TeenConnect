@@ -1,9 +1,11 @@
-import React, { useContext, useState } from 'react'
+import React, { useContext, useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { io } from 'socket.io-client'
 import { AuthContext } from '../App'
 
 export default function Login() {
   const { setUser } = useContext(AuthContext)
+  const [socket, setSocket] = useState(null)
   const [role, setRole] = useState('teen')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -13,55 +15,61 @@ export default function Login() {
   const [mockOtp, setMockOtp] = useState(null)
   const navigate = useNavigate()
 
-  const handleLogin = async (e) => {
-    e.preventDefault()
-    try {
-      const res = await fetch('http://localhost:5001/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, role })
-      })
-      if (!res.ok) throw new Error('Invalid credentials')
-      const user = await res.json()
+  useEffect(() => {
+    const newSocket = io('http://localhost:5001')
+    setSocket(newSocket)
+
+    // Handle login responses
+    newSocket.on('login_success', (user) => {
       setUser(user)
       navigate(role === 'teen' ? '/teen' : '/mentor')
-    } catch (err) {
-      alert('Invalid credentials. You can sign up first.')
-    }
-  }
+    })
 
-  const sendOtp = async () => {
-    if (!email) { alert('Enter your email to receive OTP'); return }
-    try {
-      const res = await fetch('http://localhost:5001/api/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, role })
-      })
-      const data = await res.json()
-      setMockOtp(data.otp) // For demo, backend can return OTP
+    newSocket.on('login_error', (error) => {
+      alert(error.error || 'Invalid credentials. You can sign up first.')
+    })
+
+    // Handle OTP responses
+    newSocket.on('otp_sent', (data) => {
+      setMockOtp(data.otp)
       setOtpSent(true)
       alert('Mock OTP (for demo): ' + data.otp)
-    } catch (err) {
-      alert('Failed to send OTP')
-    }
-  }
+    })
 
-  const verifyOtp = async (e) => {
-    e.preventDefault()
-    try {
-      const res = await fetch('http://localhost:5001/api/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp: otpValue, role })
-      })
-      if (!res.ok) throw new Error('Invalid OTP')
-      const user = await res.json()
+    newSocket.on('otp_error', (error) => {
+      alert(error.error || 'Failed to send OTP')
+    })
+
+    newSocket.on('otp_login_success', (user) => {
       setUser(user)
       navigate(role === 'teen' ? '/teen' : '/mentor')
-    } catch (err) {
-      alert('Invalid OTP or user not found.')
+    })
+
+    newSocket.on('otp_verify_error', (error) => {
+      alert(error.error || 'Invalid OTP or user not found.')
+    })
+
+    return () => {
+      newSocket.disconnect()
     }
+  }, [role, navigate, setUser])
+
+  const handleLogin = (e) => {
+    e.preventDefault()
+    if (!socket) return
+    socket.emit('login', { email, password, role })
+  }
+
+  const sendOtp = () => {
+    if (!email) { alert('Enter your email to receive OTP'); return }
+    if (!socket) return
+    socket.emit('send_otp', { email, role })
+  }
+
+  const verifyOtp = (e) => {
+    e.preventDefault()
+    if (!socket) return
+    socket.emit('verify_otp', { email, otp: otpValue, role })
   }
 
 

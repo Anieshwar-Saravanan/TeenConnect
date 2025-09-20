@@ -1,33 +1,67 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { io } from 'socket.io-client'
 import { AuthContext } from '../App'
 
 export default function MentorDashboard() {
   const { user } = useContext(AuthContext)
+  const [socket, setSocket] = useState(null)
   const [issues, setIssues] = useState([])
   const navigate = useNavigate()
 
   useEffect(() => {
-    fetch('http://localhost:5001/api/issues', { credentials: 'include' })
-      .then(res => res.json())
-      .then(data => setIssues(data))
-      .catch(() => setIssues([]))
-  }, [])
+    const newSocket = io('http://localhost:5001')
+    setSocket(newSocket)
 
-  async function assignToSelf(issueId) {
-    try {
-      const res = await fetch(`http://localhost:5001/api/issues/${issueId}/assign`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mentorId: user.id, mentorName: user.name })
-      })
-      if (!res.ok) throw new Error('Failed to assign')
-      const updated = await res.json()
-      setIssues(issues.map((it) => (it.id === issueId ? updated : it)))
-      navigate(`/chat/${issueId}`)
-    } catch (err) {
-      alert('Failed to assign issue')
+    // Authenticate user
+    if (user) {
+      newSocket.emit('authenticate', { userId: user.id, role: user.role })
     }
+
+    // Get issues
+    newSocket.emit('get_issues')
+
+    // Handle issues data
+    newSocket.on('issues_data', (data) => {
+      setIssues(data)
+    })
+
+    // Handle issue updates
+    newSocket.on('issue_updated', (updatedIssue) => {
+      setIssues(prev => prev.map(issue =>
+        issue.id === updatedIssue.id ? updatedIssue : issue
+      ))
+    })
+
+    // Handle new issues
+    newSocket.on('new_issue', (newIssue) => {
+      setIssues(prev => [newIssue, ...prev])
+    })
+
+    // Handle assign responses
+    newSocket.on('assign_issue_success', (updatedIssue) => {
+      setIssues(prev => prev.map(issue =>
+        issue.id === updatedIssue.id ? updatedIssue : issue
+      ))
+      navigate(`/chat/${updatedIssue.id}`)
+    })
+
+    newSocket.on('assign_issue_error', (error) => {
+      alert(error.error || 'Failed to assign issue')
+    })
+
+    return () => {
+      newSocket.disconnect()
+    }
+  }, [user, navigate])
+
+  function assignToSelf(issueId) {
+    if (!socket) return
+    socket.emit('assign_issue', {
+      issueId: parseInt(issueId),
+      mentorId: user.id,
+      mentorName: user.name
+    })
   }
 
   return (

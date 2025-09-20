@@ -1,0 +1,24 @@
+Server running on port 5001
+User connected: Va7-zTcZqyYRZM2PAAAB
+User disconnected: Va7-zTcZqyYRZM2PAAAB
+User connected: 7KSVSCZVhElGMTzjAAAD
+User disconnected: 7KSVSCZVhElGMTzjAAAD
+User connected: IOHv8gzdVDDpu7JuAAAG
+User disconnected: IOHv8gzdVDDpu7JuAAAG
+/Users/anieshwarsaravanan/Desktop/TeenConnectSockets/backend/index.js:304
+      connectedUsers.delete(socket.userId);
+      ^
+
+ReferenceError: connectedUsers is not defined
+    at Socket.<anonymous> (/Users/anieshwarsaravanan/Desktop/TeenConnectSockets/backend/index.js:304:7)
+    at Socket.emit (node:events:507:28)
+    at Socket.emitReserved (/Users/anieshwarsaravanan/Desktop/TeenConnectSockets/backend/node_modules/socket.io/dist/typed-events.js:56:22)
+    at Socket._onclose (/Users/anieshwarsaravanan/Desktop/TeenConnectSockets/backend/node_modules/socket.io/dist/socket.js:554:14)
+    at Client.onclose (/Users/anieshwarsaravanan/Desktop/TeenConnectSockets/backend/node_modules/socket.io/dist/client.js:247:20)
+    at Socket.emit (node:events:519:35)
+    at Socket.onClose (/Users/anieshwarsaravanan/Desktop/TeenConnectSockets/backend/node_modules/engine.io/build/socket.js:320:18)
+    at Object.onceWrapper (node:events:621:28)
+    at WebSocket.emit (node:events:507:28)
+    at WebSocket.onClose (/Users/anieshwarsaravanan/Desktop/TeenConnectSockets/backend/node_modules/engine.io/build/transport.js:114:14)
+
+Node.js v23.10.0
