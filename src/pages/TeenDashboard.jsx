@@ -10,6 +10,7 @@ export default function TeenDashboard() {
   const [description, setDescription] = useState('')
   const [issues, setIssues] = useState([])
   const [mentors, setMentors] = useState([])
+  const [blockedIds, setBlockedIds] = useState([])
 
   useEffect(() => {
     const newSocket = io('http://localhost:5001')
@@ -20,9 +21,10 @@ export default function TeenDashboard() {
       newSocket.emit('authenticate', { userId: user.id, role: user.role })
     }
 
-    // Get issues and mentors
-    newSocket.emit('get_issues')
-    newSocket.emit('get_mentors')
+  // Get issues, mentors and blocked mentors list
+  newSocket.emit('get_issues')
+  newSocket.emit('get_mentors')
+  if (user) newSocket.emit('get_blocked_mentors', { teenId: user.id })
 
     // Handle issues data
     newSocket.on('issues_data', (data) => {
@@ -34,9 +36,34 @@ export default function TeenDashboard() {
       setMentors(data)
     })
 
+    // Handle blocked mentors list
+    newSocket.on('blocked_list', (data) => {
+      let ids = []
+      if (Array.isArray(data)) {
+        if (data.length > 0 && typeof data[0] === 'number') ids = data
+        else if (data.length > 0 && data[0].blocked_mentor_id) ids = data.map(d => d.blocked_mentor_id)
+        else if (data.length > 0 && data[0].mentor_id) ids = data.map(d => d.mentor_id)
+        else ids = data
+      }
+      setBlockedIds(ids)
+    })
+
+    newSocket.on('block_success', (row) => {
+      const id = row?.blocked_mentor_id ?? row?.mentor_id ?? row?.id
+      if (id) setBlockedIds(prev => Array.from(new Set([...(prev||[]), id])))
+    })
+
+    newSocket.on('unblock_success', (row) => {
+      const id = row?.blocked_mentor_id ?? row?.mentor_id ?? row?.id
+      if (id) setBlockedIds(prev => (prev || []).filter(x => x !== id))
+    })
+
     // Handle new issues
     newSocket.on('new_issue', (newIssue) => {
-      setIssues(prev => [newIssue, ...prev])
+      setIssues(prev => {
+        if (!newIssue || prev.some(i => i.id === newIssue.id)) return prev
+        return [newIssue, ...prev]
+      })
     })
 
     // Handle issue updates
@@ -48,7 +75,10 @@ export default function TeenDashboard() {
 
     // Handle create issue responses
     newSocket.on('create_issue_success', (newIssue) => {
-      setIssues(prev => [newIssue, ...prev])
+      setIssues(prev => {
+        if (!newIssue || prev.some(i => i.id === newIssue.id)) return prev
+        return [newIssue, ...prev]
+      })
       setTitle('')
       setDescription('')
     })
@@ -58,6 +88,15 @@ export default function TeenDashboard() {
     })
 
     return () => {
+      newSocket.off('issues_data')
+      newSocket.off('mentors_data')
+      newSocket.off('new_issue')
+      newSocket.off('issue_updated')
+      newSocket.off('create_issue_success')
+      newSocket.off('create_issue_error')
+      newSocket.off('blocked_list')
+      newSocket.off('block_success')
+      newSocket.off('unblock_success')
       newSocket.disconnect()
     }
   }, [user])
@@ -74,6 +113,12 @@ export default function TeenDashboard() {
   }
 
   const myIssues = issues.filter((i) => i.createdBy === user.id)
+  // derive mentors that are assigned to any of this teen's issues
+  const assignedMentors = Array.from(new Map(
+    myIssues
+      .filter(i => i.assignedMentor)
+      .map(i => [i.assignedMentor.id, i.assignedMentor])
+  ).values())
 
   return (
     <div className="container py-4">
@@ -127,7 +172,36 @@ export default function TeenDashboard() {
           <div className="card">
             <div className="card-body">
               <h3 className="card-title">Quick Tips</h3>
-              <p className="text-muted">Use the private chat with your mentor to discuss issues safely. This is a mock app — data is stored locally.</p>
+              <p className="text-muted">Use the private chat with your mentor to discuss issues safely.</p>
+            </div>
+          </div>
+          <div className="card mt-3">
+            <div className="card-body">
+              <h3 className="card-title">Mentors</h3>
+              {assignedMentors.length === 0 ? (
+                <div className="text-muted">No mentors assigned to your issues.</div>
+              ) : (
+                <ul className="list-group list-group-flush">
+                  {assignedMentors.map(m => {
+                    const isBlocked = blockedIds.includes(m.id)
+                    return (
+                      <li key={m.id} className="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                          <strong>{m.name}</strong>
+                          <div className="text-muted small">{m.email}</div>
+                        </div>
+                        <div>
+                          {isBlocked ? (
+                            <button className="btn btn-sm btn-outline-danger" onClick={() => socket && socket.emit('unblock_mentor', { teenId: user.id, mentorId: m.id })}>Unblock</button>
+                          ) : (
+                            <button className="btn btn-sm btn-outline-secondary" onClick={() => socket && socket.emit('block_mentor', { teenId: user.id, mentorId: m.id })}>Block</button>
+                          )}
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
             </div>
           </div>
         </div>

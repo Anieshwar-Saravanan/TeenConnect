@@ -33,7 +33,6 @@ export default function Login() {
     newSocket.on('otp_sent', (data) => {
       setMockOtp(data.otp)
       setOtpSent(true)
-      alert('Mock OTP (for demo): ' + data.otp)
     })
 
     newSocket.on('otp_error', (error) => {
@@ -107,6 +106,9 @@ export default function Login() {
             ) : (
               <>
                 {otpSent && <div className="alert alert-warning py-2">OTP sent to {email}</div>}
+                {mockOtp && (
+                  <div className="mb-2"><small className="text-muted">Mock OTP (for demo): {mockOtp}</small></div>
+                )}
                 <div className="mb-3">
                   <label className="form-label">Enter OTP</label>
                   <input value={otpValue} onChange={(e) => setOtpValue(e.target.value)} required className="form-control" />

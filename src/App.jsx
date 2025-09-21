@@ -6,6 +6,7 @@ import TeenDashboard from './pages/TeenDashboard'
 import MentorDashboard from './pages/MentorDashboard'
 import Chat from './components/Chat'
 import Navbar from './components/Navbar'
+import Footer from './components/Footer'
 
 export const AuthContext = createContext()
 
@@ -95,6 +96,7 @@ export default function App() {
             <Route path="*" element={<div style={{ padding: 20 }}>404 - Not Found</div>} />
           </Routes>
         </main>
+        <Footer />
       </div>
     </AuthContext.Provider>
   )

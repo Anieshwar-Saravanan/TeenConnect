@@ -1,5 +1,5 @@
 :root{
-  --brand:#6c5ce7;
+  --brand:#0084ff;
   --muted:#6b7280;
   --bg:#f8fafc;
   --card:#ffffff;
@@ -17,8 +17,8 @@ body{font-family:Inter, system-ui, Arial; margin:0; background:var(--bg); color:
 .btn-ghost-light{background:transparent;color:var(--brand);border:1px solid rgba(15,23,42,0.06);padding:8px 10px;border-radius:8px;text-decoration:none}
 .btn-link{background:transparent;border:0;color:var(--brand);cursor:pointer;text-decoration:none}
 .app-shell{min-height:100vh;display:flex;flex-direction:column}
-.main-container{padding:20px}
-.auth-card{max-width:480px;margin:28px auto;padding:20px;background:var(--card);border-radius:12px;box-shadow:0 6px 20px rgba(2,6,23,0.08)}
+.main-container{padding:20px;flex:1;display:flex;flex-direction:column}
+.auth-card{max-width:480px;margin:28px auto;padding:20px;background:var(--card);border-radius:12px}
 .auth-card h2 {text-align: center; margin-bottom: 24px;}
 
 .auth-form .form-group {
@@ -51,8 +51,8 @@ body{font-family:Inter, system-ui, Arial; margin:0; background:var(--bg); color:
   margin-top: 8px;
 }
 
-.main-container{padding:20px}
-.auth-card{max-width:480px;margin:28px auto;padding:20px;background:var(--card);border-radius:12px;box-shadow:0 6px 20px rgba(2,6,23,0.08)}
+.main-container{padding:20px;flex:1;display:flex;flex-direction:column}
+.auth-card{max-width:480px;margin:28px auto;padding:20px;background:var(--card);border-radius:12px}
 .auth-form label{display:block;margin-bottom:12px}
 .auth-form input,.auth-form textarea,.auth-form select{width:100%;padding:8px;border-radius:8px;border:1px solid #e6e6ef}
 .form-actions{display:flex;gap:12px;align-items:center}
@@ -81,7 +81,73 @@ body{font-family:Inter, system-ui, Arial; margin:0; background:var(--bg); color:
 
 /* OTP and auth tweaks */
 .otp-banner{background:#fff7ed;border:1px solid #ffedd5;padding:10px;border-radius:8px;color:#92400e;margin-bottom:12px}
-.btn-otp{background:transparent;border:1px dashed rgba(108,92,231,0.25);color:var(--brand);padding:8px 12px;border-radius:8px}
+.btn-otp{background:transparent;border:1px dashed rgba(27, 4, 202, 0.25);color:var(--brand);padding:8px 12px;border-radius:8px}
+
+:root{
+  --bg-overlay: rgba(9, 30, 66, 0.45); /* tweak for light/dark theme */
+}
+
+/* page background */
+html, body {
+  height: 100%;
+}
+
+body {
+  background-color: #f6f8fb;
+  background-image: url('/assets/TeenConnect.png');
+  background-repeat: no-repeat;
+  background-position: center top;
+  background-size: cover;
+  background-attachment: fixed;
+  position: relative;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* overlay to keep content readable */
+body::before{
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(180deg, var(--bg-overlay), rgba(0,0,0,0.15));
+  pointer-events: none;
+}
+
+/* keep main containers visually distinct */
+.container {
+  background-color: transparent;
+}
+.card, .auth-card, .moderation-panel {
+  background-color: var(--card);
+  box-shadow: none;
+  border-radius: 12px;
+}
+
+/* Chat page specific: make main chat area white */
+.chat-container {
+  background-color: var(--card);
+  padding: 28px;
+  border-radius: 12px;
+  position: relative;
+  z-index: 2; /* sit above the body overlay */
+  box-shadow: none !important;
+}
+
+/* accessibility: reduce motion preference */
+@media (prefers-reduced-motion: reduce) {
+  body { background-attachment: scroll; }
+  .container, .card { transition: none; }
+}
 
 @media (max-width:900px){.dashboard{flex-direction:column}.dashboard-right{width:100%}.chat-page{flex-direction:column}.moderation-panel{width:100%}}
 @media (max-width:600px){.issue-form .form-grid{grid-template-columns:1fr}}
+
+/* Footer */
+.app-footer{padding:18px 20px;background:linear-gradient(90deg, rgba(255,255,255,0.95), rgba(255,255,255,0.9));border-top:1px solid rgba(15,23,42,0.06);margin-top:auto}
+.footer-inner{max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.footer-link{color:var(--muted);margin-left:12px;text-decoration:none}
+.footer-link:hover{text-decoration:underline}
+
+/* Override Bootstrap shadow utilities to remove remaining shadows */
+.shadow, .shadow-sm, .card.shadow, .card.shadow-sm {
+  box-shadow: none !important;
+}
