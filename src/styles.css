@@ -116,6 +116,16 @@ body::before{
 .container {
   background-color: transparent;
 }
+
+/* Page card for static pages (About / Privacy) to improve readability */
+.page-card {
+  background-color: rgba(255,255,255,0.98);
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(15,23,42,0.08);
+  position: relative;
+  z-index: 3;
+}
 .card, .auth-card, .moderation-panel {
   background-color: var(--card);
   box-shadow: none;

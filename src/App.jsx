@@ -7,6 +7,8 @@ import MentorDashboard from './pages/MentorDashboard'
 import Chat from './components/Chat'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
+import About from './pages/About'
+import Privacy from './pages/Privacy'
 
 export const AuthContext = createContext()
 
@@ -92,6 +94,8 @@ export default function App() {
             />
 
             <Route path="/chat/:issueId" element={<Chat />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/privacy" element={<Privacy />} />
 
             <Route path="*" element={<div style={{ padding: 20 }}>404 - Not Found</div>} />
           </Routes>

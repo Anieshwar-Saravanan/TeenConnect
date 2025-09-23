@@ -12,12 +12,19 @@ export default function Navbar() {
     navigate('/login')
   }
 
+  const goHome = (e) => {
+    e.preventDefault()
+    if (user && user.role === 'teen') return navigate('/teen')
+    if (user && user.role === 'mentor') return navigate('/mentor')
+    return navigate('/login')
+  }
+
   return (
     <header className="navbar">
       <div className="nav-left">
-        <Link to="/" className="logo">
+        <a href="/" className="logo" onClick={goHome}>
           Teen Connect
-        </Link>
+        </a>
       </div>
       <div className="nav-right">
         {user ? (

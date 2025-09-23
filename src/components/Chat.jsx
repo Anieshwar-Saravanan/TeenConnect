@@ -169,9 +169,16 @@ export default function Chat() {
     newSocket.on('delete_message_success', (payload) => {
       try {
         if (payload.scope === 'for_me') {
-          alert('Message removed from your view')
+          // remove message from local view
+          const msgId = payload?.messageId
+          if (msgId) {
+            setMessages(prev => (prev || []).filter(m => m.id !== msgId))
+            setOpenMessageMenu(null)
+          }
+          // optional brief user feedback
+          try { alert('Message removed from your view') } catch (e) {}
         } else if (payload.scope === 'for_everyone') {
-          alert('Message deleted for everyone')
+          try { alert('Message deleted for everyone') } catch (e) {}
         }
       } catch (e) {}
     })
@@ -291,6 +298,16 @@ export default function Chat() {
     return senderRole === 'teen' ? 'Teen' : senderRole === 'mentor' ? 'Mentor' : 'User'
   }
 
+  // Helper to format timestamps (hours and minutes only)
+  const formatTime = (ts) => {
+    try {
+      if (!ts) return ''
+      return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    } catch (e) {
+      return ''
+    }
+  }
+
   if (!issue) return <div className="p-4">Issue not found</div>
 
   return (
@@ -302,10 +319,10 @@ export default function Chat() {
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
               <h3 className="mb-0">{issue.title}</h3>
-              <div className="text-muted small">With: {issue.assignedMentor?.name || 'Unassigned'}</div>
-              {issue.assignedMentor?.email && (
+              <div className="text-muted small">Mentor: {issue.assignedMentor?.name || 'Unassigned'}</div>
+              {/* {issue.assignedMentor?.email && (
                 <div className="text-muted small">Mentor email: {issue.assignedMentor.email}</div>
-              )}
+              )} */}
               {isMentorBlockedOnThisIssue && (
                 <div className="mt-2 alert alert-warning p-2 small">This mentor has been blocked by the teen for this issue — chat is paused with them. The issue is open for other mentors to take over.</div>
               )}
@@ -329,13 +346,13 @@ export default function Chat() {
                           <div style={{ position: 'absolute', right: 0, top: '110%', zIndex: 50, minWidth: 200 }}>
                             <div className="card shadow-sm">
                               <div className="list-group list-group-flush">
-                                <button className="list-group-item list-group-item-action" onClick={() => {
+                                {/* <button className="list-group-item list-group-item-action" onClick={() => {
                                   setShowHeaderMenu(false)
                                   console.debug('Delete for me clicked', { socket })
                                   if (!socket || (socket && socket.connected === false)) return alert('Not connected to server')
                                   if (!confirm('Delete this chat for me? This will only remove it from your view.')) return
                                   socket.emit('delete_chat', { issueId: parseInt(issueId), scope: 'for_me' })
-                                }}>Delete for me</button>
+                                }}>Delete for me</button> */}
                                 {/* show delete for everyone only if authorized */}
                                 {((user && issue.createdBy === user.id) || (user && user.role === 'mentor' && issue.assignedMentor && issue.assignedMentor.id === user.id)) && (
                                   <button className="list-group-item list-group-item-action text-danger" onClick={() => {
@@ -344,7 +361,7 @@ export default function Chat() {
                                     if (!socket || (socket && socket.connected === false)) return alert('Not connected to server')
                                     if (!confirm('Delete this chat for everyone? This will permanently remove messages and the issue for all participants.')) return
                                     socket.emit('delete_chat', { issueId: parseInt(issueId), scope: 'for_everyone' })
-                                  }}>Delete for everyone</button>
+                                  }}>Delete the issue</button>
                                 )}
                               </div>
                             </div>
@@ -390,7 +407,7 @@ export default function Chat() {
                     <div className={`px-3 py-2 rounded-3 ${bubbleColor}`} style={{ maxWidth: '70%' }}>
                       <div className="small fw-bold mb-1">
                         {resolveSenderName(m.senderId, m.senderRole)}{' '}
-                        <span className="text-muted">· {ts ? new Date(ts).toLocaleTimeString() : ''}</span>
+                        <span className="text-muted">· {ts ? formatTime(ts) : ''}</span>
                       </div>
                       {m.moderation && m.moderation.summaryScores && (
                         (() => {

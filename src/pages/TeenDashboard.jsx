@@ -83,6 +83,18 @@ export default function TeenDashboard() {
       setDescription('')
     })
 
+    // Handle delete chat success (ack) and issue removal broadcasts
+    newSocket.on('delete_chat_success', (data) => {
+      // remove locally if server acknowledged
+      const id = data?.issueId
+      if (id) setIssues(prev => (prev || []).filter(i => i.id !== id))
+    })
+
+    newSocket.on('issue_removed', (data) => {
+      const id = data?.id
+      if (id) setIssues(prev => (prev || []).filter(i => i.id !== id))
+    })
+
     newSocket.on('create_issue_error', (error) => {
       alert(error.error || 'Failed to post issue')
     })
@@ -94,6 +106,8 @@ export default function TeenDashboard() {
       newSocket.off('issue_updated')
       newSocket.off('create_issue_success')
       newSocket.off('create_issue_error')
+      newSocket.off('delete_chat_success')
+      newSocket.off('issue_removed')
       newSocket.off('blocked_list')
       newSocket.off('block_success')
       newSocket.off('unblock_success')
@@ -158,9 +172,18 @@ export default function TeenDashboard() {
                         <strong>{it.title}</strong>
                         <div className="text-muted small">{it.assignedMentor ? `Mentor: ${it.assignedMentor.name}` : 'Unassigned'}</div>
                       </div>
-                      <Link to={`/chat/${it.id}`} className="btn btn-outline-primary">
-                        {it.assignedMentor ? 'Open Chat' : 'View Chat (disabled)'}
-                      </Link>
+                      <div className="d-flex gap-2">
+                        <Link to={`/chat/${it.id}`} className="btn btn-outline-primary">
+                          {it.assignedMentor ? 'Open Chat' : 'View Chat (disabled)'}
+                        </Link>
+                        {!it.assignedMentor && (
+                          <button className="btn btn-outline-danger" onClick={() => {
+                            if (!socket) return
+                            if (!window.confirm('Delete this issue and its draft chat? This cannot be undone.')) return
+                            socket.emit('delete_chat', { issueId: it.id, scope: 'for_everyone' })
+                          }}>Delete</button>
+                        )}
+                      </div>
                     </li>
                   ))}
                 </ul>

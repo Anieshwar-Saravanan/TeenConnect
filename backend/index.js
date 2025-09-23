@@ -163,10 +163,7 @@ io.on('connection', (socket) => {
           socket.emit('otp_error', { error: 'Failed to send OTP email' });
         }
       } else {
-        // In non-configured environments we do NOT return the OTP to the client.
-        // For safety, emit an error instructing to configure SMTP. If you need
-        // a quick dev fallback, set OTP_ALLOW_PLAIN=true in your .env to allow
-        // server-side logging of the OTP (still not returned to clients).
+
         console.warn(`SMTP not configured - OTP generated for ${email} but not sent`);
         if (process.env.OTP_ALLOW_PLAIN === 'true') {
           console.log(`DEV OTP for ${email}: ${otp}`);
@@ -540,12 +537,30 @@ io.on('connection', (socket) => {
     if (!text.trim()) return;
 
     try {
-      // block messages containing PII
+      // Insert the message first so we can reference its id in flags if needed
+      const { rows: insertedRows } = await pool.query(
+        'INSERT INTO messages (issue_id, sender_id, text) VALUES ($1, $2, $3) RETURNING *',
+        [issueId, senderId, text.trim()]
+      );
+      const inserted = insertedRows[0];
+
+      // block messages containing PII (if detected, flag and remove message)
       try {
         if (PII_EMAIL_REGEX.test(text) || PII_PHONE_REGEX.test(text)) {
           try {
-            await pool.query('INSERT INTO pii_violations (user_id, issue_id, message_id, detected_text, detected_type) VALUES ($1, $2, $3, $4, $5)', [senderId, issueId, null, text, 'email_or_phone']);
+            await pool.query('INSERT INTO pii_violations (user_id, issue_id, message_id, detected_text, detected_type) VALUES ($1, $2, $3, $4, $5)', [senderId, issueId, inserted.id, text, 'email_or_phone']);
           } catch (e) {}
+
+          // If the sender is a mentor, record a mentor flag for audit (include message_id)
+          try {
+            if (senderRole === 'mentor') {
+              await pool.query('INSERT INTO mentor_flags (mentor_id, message_id, reason) VALUES ($1, $2, $3)', [senderId, inserted.id, 'PII detected in message']);
+            }
+          } catch (e) { console.warn('mentor_flags insert failed', e && e.message) }
+
+          // remove the message since it contains PII
+          try { await pool.query('DELETE FROM messages WHERE id=$1', [inserted.id]) } catch (e) {}
+
           socket.emit('send_message_error', { error: 'Do not share your personal info' });
           return;
         }
@@ -570,7 +585,7 @@ io.on('connection', (socket) => {
           }
         }
       }
-      // Analyze text before saving to database so we can block toxic messages
+      // Analyze text so we can block toxic messages
       let moderationRaw = null;
       try {
         moderationRaw = await analyzeText(text.trim());
@@ -593,23 +608,27 @@ io.on('connection', (socket) => {
         }
         const toxicity = summaryScores.TOXICITY || 0;
         const severe = summaryScores.SEVERE_TOXICITY || 0;
-        const BLOCK_THRESHOLD = 0.8; // tuneable
+        const BLOCK_THRESHOLD = 0.7; // tuneable
         if (toxicity >= BLOCK_THRESHOLD || severe >= BLOCK_THRESHOLD) {
+          // record a mentor flag for this event with the saved message id
+          try {
+            await pool.query('INSERT INTO mentor_flags (mentor_id, message_id, reason) VALUES ($1, $2, $3)', [senderId, inserted.id, `toxicity:${toxicity};severe:${severe}`]);
+          } catch (e) { console.warn('Failed to insert mentor_flag', e && e.message) }
+
+          // remove the message since it violated policy
+          try { await pool.query('DELETE FROM messages WHERE id=$1', [inserted.id]) } catch (e) {}
+
           socket.emit('send_message_error', { error: 'Message blocked: violates community safety policies' });
           return;
         }
       }
 
-      // Safe to insert message
-      const { rows } = await pool.query(
-        'INSERT INTO messages (issue_id, sender_id, text) VALUES ($1, $2, $3) RETURNING *',
-        [issueId, senderId, text.trim()]
-      );
-
+      // Safe: the message was already inserted above and not removed by checks
+      const saved = inserted;
       const newMessage = {
-        ...rows[0],
-        senderId: rows[0].sender_id,
-        createdAt: rows[0].created_at
+        ...saved,
+        senderId: saved.sender_id,
+        createdAt: saved.created_at
       };
 
       // attach moderation summary if available
